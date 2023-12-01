@@ -16,12 +16,21 @@
 
 package com.example.inventory.ui.item
 
+import android.net.Uri
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import androidx.security.crypto.EncryptedFile
+import com.example.inventory.MAIN
+import com.example.inventory.MASTER_KEY
 import com.example.inventory.data.Item
 import com.example.inventory.data.ItemsRepository
+import com.example.inventory.data.Settings
+import com.example.inventory.data.SourceType
+import com.google.gson.Gson
+import java.io.File
+import java.io.FileInputStream
 import java.text.NumberFormat
 
 /**
@@ -41,13 +50,82 @@ class ItemEntryViewModel(private val itemsRepository: ItemsRepository) : ViewMod
      */
     fun updateUiState(itemDetails: ItemDetails) {
         itemUiState =
-            ItemUiState(itemDetails = itemDetails, isEntryValid = validateInput(itemDetails))
+            ItemUiState(itemDetails = itemDetails, isEntryValid = validateInput(itemDetails),
+                isPhoneValid = validatePhone(itemDetails),
+                isEmailValid = validateEmail(itemDetails))
     }
 
     private fun validateInput(uiState: ItemDetails = itemUiState.itemDetails): Boolean {
         return with(uiState) {
             name.isNotBlank() && price.isNotBlank() && quantity.isNotBlank() &&
-                    supName.isNotBlank() && email.isNotBlank() && phone.isNotBlank()
+                    supName.isNotBlank() && validatePhone(uiState) && validateEmail(uiState)
+        }
+    }
+
+    private val validEmailRegex = Regex("[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}")
+    private val validPhoneNumberRegex = Regex("^8\\d{10}$")
+
+    private fun validatePhone(uiState: ItemDetails = itemUiState.itemDetails): Boolean {
+        return with(uiState) {
+            !(phone.isNotBlank() && !validPhoneNumberRegex.matches(phone))
+        }
+    }
+
+    private fun validateEmail(uiState: ItemDetails = itemUiState.itemDetails): Boolean {
+        return with(uiState) {
+            !(email.isNotBlank() && !validEmailRegex.matches(email))
+        }
+    }
+
+    suspend fun loadFromFile(uri: Uri) {
+        val contentResolver = MAIN.applicationContext.contentResolver
+
+        val file = File(MAIN.applicationContext.cacheDir, "temp.json")
+        if (file.exists())
+            file.delete()
+
+        val encryptedFile = EncryptedFile.Builder(
+            MAIN.applicationContext,
+            file,
+            MASTER_KEY,
+            EncryptedFile.FileEncryptionScheme.AES256_GCM_HKDF_4KB
+        ).build()
+
+        file.outputStream().use { outputStream ->
+            contentResolver.openFileDescriptor(uri, "r")?.use { descriptor ->
+                FileInputStream(descriptor.fileDescriptor).use { inputStream ->
+                    inputStream.copyTo(outputStream)
+                    inputStream.close()
+                }
+                outputStream.close()
+            }
+        }
+
+        encryptedFile.openFileInput().use { inputStream ->
+            val jsonItem = String(inputStream.readBytes())
+            val gson = Gson()
+            val item = gson.fromJson(jsonItem, Item::class.java)
+            item.sourceType = SourceType.File
+            var curName = item.name
+            var i = 1
+            while (itemsRepository.isExists(curName)) {
+                curName = "${item.name} ($i)"
+                i++
+            }
+            val finalItem = Item(
+                id = 0,
+                name = curName,
+                price = item.price,
+                quantity = item.quantity,
+                email = item.email,
+                phone = item.phone,
+                supName = item.supName,
+                sourceType = item.sourceType,
+
+                )
+            itemsRepository.insertItem(finalItem)
+
+            file.delete()
         }
     }
 
@@ -62,8 +140,21 @@ class ItemEntryViewModel(private val itemsRepository: ItemsRepository) : ViewMod
  * Represents Ui State for an Item.
  */
 data class ItemUiState(
-    val itemDetails: ItemDetails = ItemDetails(),
-    val isEntryValid: Boolean = false
+    val itemDetails: ItemDetails = if (!Settings.enableDefaultFields)
+        ItemDetails()
+    else ItemDetails(
+        id = 0,
+        name = "",
+        price = "",
+        quantity = "",
+        supName = Settings.defaultSupName,
+        phone = Settings.defaultPhone,
+        email = Settings.defaultEmail,
+        sourceType = SourceType.Manual,
+    ),
+    val isEntryValid: Boolean = false,
+    val isPhoneValid: Boolean = true,
+    val isEmailValid: Boolean = true,
 )
 
 data class ItemDetails(
@@ -74,6 +165,7 @@ data class ItemDetails(
     val supName: String = "",
     val email: String = "",
     val phone: String = "",
+    val sourceType: SourceType = SourceType.Manual,
 )
 
 /**
@@ -88,7 +180,8 @@ fun ItemDetails.toItem(): Item = Item(
     quantity = quantity.toIntOrNull() ?: 0,
     supName = supName,
     email = email,
-    phone = phone
+    phone = phone,
+    sourceType = sourceType,
 )
 
 fun Item.formatedPrice(): String {
@@ -113,5 +206,6 @@ fun Item.toItemDetails(): ItemDetails = ItemDetails(
     quantity = quantity.toString(),
     supName = supName,
     email = email,
-    phone = phone
+    phone = phone,
+    sourceType = sourceType,
 )

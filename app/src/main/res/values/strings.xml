@@ -42,4 +42,13 @@
     <string name="email_req">Supplier email*</string>
     <string name="phone">Supplier phone number</string>
     <string name="phone_req">Supplier phone number*</string>
+    <string name="settings_title">Settings</string>
+    <string name="sup_name_default">Default supplier name</string>
+    <string name="email_default">Default supplier email</string>
+    <string name="phone_default">Default supplier phone number</string>
+    <string name="enable_default_fields">Enable default fields</string>
+    <string name="hide_sensitive_data">Hide sensitive data</string>
+    <string name="disable_sharing">Disable sharing</string>
+    <string name="save_title">Save</string>
+    <string name="source_type">Source Type</string>
 </resources>

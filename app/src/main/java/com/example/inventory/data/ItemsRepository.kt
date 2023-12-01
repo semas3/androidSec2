@@ -46,4 +46,6 @@ interface ItemsRepository {
      * Update item in the data source
      */
     suspend fun updateItem(item: Item)
+
+    suspend fun isExists(name: String): Boolean
 }
