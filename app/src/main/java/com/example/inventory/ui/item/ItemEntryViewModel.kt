@@ -62,7 +62,7 @@ class ItemEntryViewModel(private val itemsRepository: ItemsRepository) : ViewMod
         }
     }
 
-    private val validEmailRegex = Regex("[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}")
+    private val validEmailRegex = Regex("[a-zA-Zа-яА-Я0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}")
     private val validPhoneNumberRegex = Regex("^8\\d{10}$")
 
     private fun validatePhone(uiState: ItemDetails = itemUiState.itemDetails): Boolean {

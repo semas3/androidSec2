@@ -23,12 +23,12 @@ plugins {
 }
 
 android {
-    compileSdk = 33
+    compileSdk = 34
 
     defaultConfig {
         applicationId = "com.example.inventory"
         minSdk = 24
-        targetSdk = 33
+        targetSdk = 34
         versionCode = 1
         versionName = "1.0"
 
@@ -91,4 +91,8 @@ dependencies {
     ksp("androidx.room:room-compiler:${rootProject.extra["room_version"]}")
     implementation("androidx.room:room-ktx:${rootProject.extra["room_version"]}")
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
+
+    // SQLCipher
+    implementation ("net.zetetic:android-database-sqlcipher:4.5.0")
+    implementation("androidx.sqlite:sqlite:2.4.0")
 }
